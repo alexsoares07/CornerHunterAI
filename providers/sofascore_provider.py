@@ -1,48 +1,33 @@
-from pysofascore import SofaScore
-
-from providers.base_provider import BaseProvider
-from models.match import Match
+from sofascore_api import SofaScoreClient
 
 
-class SofaScoreProvider(BaseProvider):
+class SofaScoreProvider:
 
     def __init__(self):
-
-        self.sofa = SofaScore()
-
-
-    def get_live_matches(self) -> list[Match]:
-
-        events = self.sofa.get_live_events()
-
-        matches = []
+        self.client = SofaScoreClient()
 
 
-        for event in events:
+    def get_corners(self, event_id):
 
-            match = Match(
+        stats = self.client.get_event_statistics(event_id)
 
-                home=event["homeTeam"]["name"],
+        for period in stats:
 
-                away=event["awayTeam"]["name"],
+            if period["period"] == "ALL":
 
-                minute=event.get("time", {}).get("current", 0),
+                for group in period["groups"]:
 
-                home_score=event["homeScore"]["current"],
+                    for item in group["statisticsItems"]:
 
-                away_score=event["awayScore"]["current"],
+                        if item["key"] == "cornerKicks":
 
-                corners=0,
+                            return {
+                                "home_corners": item["homeValue"],
+                                "away_corners": item["awayValue"],
+                                "total_corners": (
+                                    item["homeValue"] +
+                                    item["awayValue"]
+                                )
+                            }
 
-                dangerous_attacks=0,
-
-                shots=0,
-
-                home_pressure="normal"
-
-            )
-
-            matches.append(match)
-
-
-        return matches
+        return None

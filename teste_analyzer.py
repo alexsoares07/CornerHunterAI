@@ -1,19 +1,16 @@
-from analyzer.corner_analyzer import CornerAnalyzer
-from models.match import Match
+from sofascore_api import SofaScoreClient
+from services.live_analyzer import LiveAnalyzer
 
 
-match = Match(
-    home="Flamengo",
-    away="Palmeiras",
-    minute=84,
-    home_score=1,
-    away_score=1,
-    corners=10,
-    dangerous_attacks=95,
-    shots=18,
-    home_pressure="alta"
-)
+sofa = SofaScoreClient()
 
-analyzer = CornerAnalyzer()
+analyzer = LiveAnalyzer()
 
-print(analyzer.recommendation(match))
+
+jogos = sofa.get_live_events()
+
+
+resultado = analyzer.analyze_match(jogos[0])
+
+
+print(resultado)

@@ -1,6 +1,16 @@
-from analyzer.scanner import scan_matches
+from services.live_scanner import LiveScanner
 
 
-resultado = scan_matches()
+scanner = LiveScanner()
 
-print(resultado)
+
+jogos = scanner.scan_live_matches()
+print(jogos[0])
+
+print("TOTAL ANALISADOS:", len(jogos))
+
+
+for jogo in jogos[:5]:
+
+    print("---------------------")
+    print(jogo)
