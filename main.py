@@ -1,11 +1,15 @@
+from bot.telegram_bot import iniciar_bot
+
+
 def main() -> None:
     print("=" * 50)
     print("        CORNER HUNTER AI")
     print("=" * 50)
 
-    print("🤖 Sistema iniciado com sucesso!")
-    print("⚽ Módulo de análise de Over Escanteios carregando...")
-    print("📊 Aguardando conexão com Telegram...")
+    print("🤖 Inicializando sistema...")
+    print("📊 Módulo de análise Over Escanteios carregado")
+
+    iniciar_bot()
 
 
 if __name__ == "__main__":
