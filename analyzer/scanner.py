@@ -1,34 +1,35 @@
 from analyzer.corner_analyzer import CornerAnalyzer
-from scraper.live_matches import get_live_matches
+from providers.fake_provider import FakeProvider
 
 
-def scan_matches():
+class Scanner:
 
-    jogos = get_live_matches()
+    def __init__(self):
 
-    oportunidades = []
+        self.provider = FakeProvider()
+        self.analyzer = CornerAnalyzer()
 
-    for jogo in jogos:
+    def scan(self):
 
-        analise = CornerAnalyzer(
-            minute=jogo["minute"],
-            home_score=jogo["home_score"],
-            away_score=jogo["away_score"],
-            corners=jogo["corners"],
-            dangerous_attacks=jogo["dangerous_attacks"],
-            shots=jogo["shots"],
-            home_pressure="alta"
-        )
+        oportunidades = []
 
-        resultado = analise.recommendation()
+        partidas = self.provider.get_live_matches()
 
-        if resultado["entrada"]:
-            oportunidades.append(
-                {
-                    "jogo": f'{jogo["home"]} x {jogo["away"]}',
+        for partida in partidas:
+
+            resultado = self.analyzer.recommendation(partida)
+
+            if resultado["entrada"]:
+
+                oportunidades.append({
+
+                    "home": partida.home,
+                    "away": partida.away,
+                    "minute": partida.minute,
                     "score": resultado["score"],
+                    "nivel": resultado["nivel"],
                     "mercado": resultado["mercado"]
-                }
-            )
 
-    return oportunidades
+                })
+
+        return oportunidades

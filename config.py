@@ -1,0 +1,15 @@
+# Configurações do Bot
+
+BOT_NAME = "CornerHunterAI"
+
+CHECK_INTERVAL = 120
+
+MIN_SCORE = 80
+
+MIN_MINUTE = 75
+
+MIN_CORNERS = 8
+
+PRESSURE_THRESHOLD = 85
+
+MAX_MATCHES = 100
