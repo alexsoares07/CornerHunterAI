@@ -1,4 +1,12 @@
+from services.entry_engine import EntryEngine
+
+
 class SignalGenerator:
+
+    def __init__(self):
+
+        self.entry_engine = EntryEngine()
+
 
 
     def generate(self, analysis):
@@ -28,29 +36,8 @@ class SignalGenerator:
         )
 
 
-        minute = analysis.get(
-            "minute",
-            0
-        )
 
-
-        corners = (
-            analysis.get(
-                "corners",
-                {}
-            )
-            .get(
-                "total_corners",
-                0
-            )
-        )
-
-
-
-        # =========================
-        # FILTROS DE SEGURANÇA
-        # =========================
-
+        # Apenas oportunidades reais
 
         if level != "🟢 OPORTUNIDADE":
 
@@ -58,30 +45,28 @@ class SignalGenerator:
 
 
 
-        if score < 70:
-
-            return None
-
-
-
-        if minute < 60:
-
-            return None
+        corners = analysis.get(
+            "corners",
+            {}
+        )
 
 
 
-        if corners < 6:
+        # GERA A ENTRADA
 
-            return None
+        entry = self.entry_engine.generate_entry(
+            analysis,
+            score
+        )
 
-
-
-        # =========================
-        # SINAL APROVADO
-        # =========================
 
 
         return {
+
+
+            "event_id": analysis.get(
+                "event_id"
+            ),
 
 
             "alert": "🚨 OPORTUNIDADE DE CANTOS",
@@ -90,35 +75,56 @@ class SignalGenerator:
 
             "match": analysis.get(
                 "match",
-                ""
+                "Jogo desconhecido"
             ),
 
 
 
-            "minute": minute,
+            "minute": analysis.get(
+                "minute",
+                0
+            ),
 
 
 
             "result": analysis.get(
                 "score",
-                ""
+                "0 - 0"
             ),
 
 
 
-            "corners": analysis.get(
-                "corners",
-                {}
-            ),
+            "corners": {
 
+
+                "home_corners": corners.get(
+                    "home_corners",
+                    0
+                ),
+
+
+                "away_corners": corners.get(
+                    "away_corners",
+                    0
+                ),
+
+
+                "total_corners": corners.get(
+                    "total_corners",
+                    0
+                )
+
+
+            },
 
 
             "confidence": score,
 
 
-
             "level": level,
 
+
+            "entry": entry,
 
 
             "reasons": reasons

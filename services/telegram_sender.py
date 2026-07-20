@@ -1,4 +1,5 @@
 import requests
+
 from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
 
 
@@ -19,6 +20,7 @@ class TelegramSender:
         if not signal:
 
             print("Nenhum sinal para enviar")
+
             return False
 
 
@@ -29,24 +31,44 @@ class TelegramSender:
         )
 
 
+        entry = signal.get(
+            "entry",
+            {}
+        )
+
+
 
         mensagem = f"""
 🚨 OPORTUNIDADE DE CANTOS
 
+
 ⚽ Jogo:
 {signal.get('match', '')}
 
+
 ⏱ Minuto:
-{signal.get('minute', '')}
+{signal.get('minute', '')}'
+
 
 📊 Placar:
 {signal.get('result', '')}
 
+
 🚩 Escanteios:
 {corners.get('total_corners', 0)}
 
+
+🎯 ENTRADA SUGERIDA:
+{entry.get('market', 'Analisar')}
+
+
+💰 Odd mínima:
+{entry.get('odd_minimum', '1.50')}
+
+
 🔥 Confiança:
 {signal.get('confidence', 0)} pontos
+
 
 📌 Motivos:
 """

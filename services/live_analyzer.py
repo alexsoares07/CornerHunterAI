@@ -17,14 +17,58 @@ class LiveAnalyzer:
 
         try:
 
-            match_time = event.get("time") or {}
+            # ============================
+            # MINUTO REAL SOFASCORE CLOCK
+            # ============================
 
-            status = event.get("status") or {}
+            status = event.get(
+                "status",
+                {}
+            )
+
+
+            clock = status.get(
+                "clock",
+                {}
+            )
+
+
+            if clock:
+
+                played = clock.get(
+                    "played",
+                    0
+                )
+
+
+                if played:
+
+                    minute = int(played // 60)
+
+                    if minute > 95:
+                        minute = 90
+
+
+                    return minute
+
+
+
+            # ============================
+            # FALLBACK TIMESTAMP
+            # ============================
+
+
+            match_time = event.get(
+                "time",
+                {}
+            )
+
 
             period = status.get(
                 "description",
                 ""
             )
+
 
             start = match_time.get(
                 "currentPeriodStartTimestamp"
@@ -36,7 +80,9 @@ class LiveAnalyzer:
                 return 0
 
 
-            seconds = int(time.time()) - start
+
+            seconds = int(time.time()) - int(start)
+
 
 
             if period == "1st half":
@@ -44,9 +90,11 @@ class LiveAnalyzer:
                 minute = seconds // 60
 
 
+
             elif period == "2nd half":
 
                 minute = 45 + (seconds // 60)
+
 
 
             else:
@@ -54,9 +102,11 @@ class LiveAnalyzer:
                 minute = 0
 
 
+
             if minute < 0:
 
                 minute = 0
+
 
 
             if minute > 95:
@@ -64,10 +114,17 @@ class LiveAnalyzer:
                 minute = 90
 
 
+
             return minute
 
 
-        except Exception:
+
+        except Exception as e:
+
+
+            print(
+                f"Erro pegando minuto: {e}"
+            )
 
             return 0
 
@@ -81,7 +138,10 @@ class LiveAnalyzer:
         try:
 
 
-            event_id = event.get("id")
+            event_id = event.get(
+                "id"
+            )
+
 
 
             home = (
@@ -90,6 +150,7 @@ class LiveAnalyzer:
                 "name",
                 "Casa"
             )
+
 
 
             away = (
@@ -109,6 +170,7 @@ class LiveAnalyzer:
             )
 
 
+
             away_score = (
                 event.get("awayScore") or {}
             ).get(
@@ -118,7 +180,9 @@ class LiveAnalyzer:
 
 
 
-            minute = self.get_match_minute(event)
+            minute = self.get_match_minute(
+                event
+            )
 
 
 
@@ -126,18 +190,6 @@ class LiveAnalyzer:
                 event_id
             )
 
-
-
-            home_corners = corners.get(
-                "home_corners",
-                0
-            )
-
-
-            away_corners = corners.get(
-                "away_corners",
-                0
-            )
 
 
             total_corners = corners.get(
@@ -153,6 +205,7 @@ class LiveAnalyzer:
                     total_corners / minute,
                     3
                 )
+
 
             else:
 
@@ -181,19 +234,7 @@ class LiveAnalyzer:
                 "minute": minute,
 
 
-                "corners": {
-
-
-                    "home_corners": home_corners,
-
-
-                    "away_corners": away_corners,
-
-
-                    "total_corners": total_corners
-
-
-                },
+                "corners": corners,
 
 
                 "corner_rate": corner_rate

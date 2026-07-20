@@ -1,5 +1,5 @@
 from sofascore_api import SofaScoreClient
-
+import time
 
 
 class SofaScoreProvider:
@@ -11,8 +11,103 @@ class SofaScoreProvider:
 
 
 
-    def get_statistics_map(self, event_id):
+    def get_event(self, event_id):
 
+        try:
+
+            event = self.client.get_event(
+                event_id
+            )
+
+            return event
+
+
+        except Exception as e:
+
+            print(
+                f"Erro buscando evento {event_id}: {e}"
+            )
+
+            return {}
+
+
+
+    def get_minute(self, event_id):
+
+        try:
+
+            event = self.get_event(
+                event_id
+            )
+
+
+            if not event:
+
+                return 0
+
+
+
+            status = event.get(
+                "status",
+                {}
+            )
+
+
+            # minuto oficial do SofaScore
+
+            minute = status.get(
+                "clock",
+                {}
+            ).get(
+                "played",
+                0
+            )
+
+
+
+            if minute:
+
+                return int(minute)
+
+
+
+            # fallback pelo tempo corrido
+
+            start = event.get(
+                "startTimestamp"
+            )
+
+
+            if start:
+
+                elapsed = int(time.time()) - int(start)
+
+                minute = elapsed // 60
+
+
+                if minute > 0:
+
+                    return minute
+
+
+
+            return 0
+
+
+
+        except Exception as e:
+
+            print(
+                f"Erro buscando minuto {event_id}: {e}"
+            )
+
+            return 0
+
+
+
+
+
+    def get_statistics_map(self, event_id):
 
         try:
 
@@ -103,6 +198,7 @@ class SofaScoreProvider:
         )
 
 
+
         if corners:
 
 
@@ -118,6 +214,7 @@ class SofaScoreProvider:
             )
 
 
+
             return {
 
 
@@ -127,7 +224,7 @@ class SofaScoreProvider:
                 "away_corners": int(away),
 
 
-                "total_corners": int(home) + int(away)
+                "total_corners": int(home)+int(away)
 
 
             }
