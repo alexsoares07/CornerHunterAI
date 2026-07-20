@@ -1,33 +1,149 @@
 from sofascore_api import SofaScoreClient
 
 
+
 class SofaScoreProvider:
 
+
     def __init__(self):
+
         self.client = SofaScoreClient()
+
+
+
+    def get_statistics_map(self, event_id):
+
+
+        try:
+
+
+            stats = self.client.get_event_statistics(
+                event_id
+            )
+
+
+            if not stats:
+
+                return {}
+
+
+
+            resultado = {}
+
+
+
+            for period in stats:
+
+
+                if period.get("period") != "ALL":
+
+                    continue
+
+
+
+                for group in period.get("groups", []):
+
+
+                    for item in group.get("statisticsItems", []):
+
+
+                        key = item.get("key")
+
+
+                        if key:
+
+
+                            resultado[key] = {
+
+
+                                "home": item.get(
+                                    "homeValue",
+                                    0
+                                ),
+
+
+                                "away": item.get(
+                                    "awayValue",
+                                    0
+                                )
+
+
+                            }
+
+
+
+            return resultado
+
+
+
+        except Exception as e:
+
+
+            print(
+                f"Erro buscando estatísticas {event_id}: {e}"
+            )
+
+
+            return {}
+
+
+
 
 
     def get_corners(self, event_id):
 
-        stats = self.client.get_event_statistics(event_id)
 
-        for period in stats:
+        stats = self.get_statistics_map(
+            event_id
+        )
 
-            if period["period"] == "ALL":
 
-                for group in period["groups"]:
+        corners = stats.get(
+            "cornerKicks"
+        )
 
-                    for item in group["statisticsItems"]:
 
-                        if item["key"] == "cornerKicks":
+        if corners:
 
-                            return {
-                                "home_corners": item["homeValue"],
-                                "away_corners": item["awayValue"],
-                                "total_corners": (
-                                    item["homeValue"] +
-                                    item["awayValue"]
-                                )
-                            }
 
-        return None
+            home = corners.get(
+                "home",
+                0
+            )
+
+
+            away = corners.get(
+                "away",
+                0
+            )
+
+
+            return {
+
+
+                "home_corners": int(home),
+
+
+                "away_corners": int(away),
+
+
+                "total_corners": int(home) + int(away)
+
+
+            }
+
+
+
+        return {
+
+
+            "home_corners": 0,
+
+
+            "away_corners": 0,
+
+
+            "total_corners": 0
+
+
+        }

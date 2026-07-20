@@ -1,103 +1,214 @@
-from providers.sofascore_provider import SofaScoreProvider
 import time
+
+from providers.sofascore_provider import SofaScoreProvider
+
 
 
 class LiveAnalyzer:
 
+
     def __init__(self):
+
         self.provider = SofaScoreProvider()
+
 
 
     def get_match_minute(self, event):
 
-        match_time = event.get("time", {})
-        status = event.get("status", {})
+        try:
 
-        if not match_time:
-            return None
+            match_time = event.get("time") or {}
 
-        period = status.get("description")
+            status = event.get("status") or {}
 
-        start = match_time.get("currentPeriodStartTimestamp")
+            period = status.get(
+                "description",
+                ""
+            )
 
-        if not start:
-            return None
-
-
-        seconds = int(time.time()) - start
-
-
-        if period == "1st half":
-            return seconds // 60
+            start = match_time.get(
+                "currentPeriodStartTimestamp"
+            )
 
 
-        elif period == "2nd half":
-            return 45 + (seconds // 60)
+            if not start:
+
+                return 0
 
 
-        return None
+            seconds = int(time.time()) - start
+
+
+            if period == "1st half":
+
+                minute = seconds // 60
+
+
+            elif period == "2nd half":
+
+                minute = 45 + (seconds // 60)
+
+
+            else:
+
+                minute = 0
+
+
+            if minute < 0:
+
+                minute = 0
+
+
+            if minute > 95:
+
+                minute = 90
+
+
+            return minute
+
+
+        except Exception:
+
+            return 0
+
+
 
 
 
     def analyze_match(self, event):
 
-        event_id = event["id"]
-
-        home = event["homeTeam"]["name"]
-        away = event["awayTeam"]["name"]
-
-
-        home_score = event["homeScore"].get("current", 0)
-        away_score = event["awayScore"].get("current", 0)
-
-
-        minute = self.get_match_minute(event)
-
 
         try:
-            corners = self.provider.get_corners(event_id)
 
-        except Exception:
+
+            event_id = event.get("id")
+
+
+            home = (
+                event.get("homeTeam") or {}
+            ).get(
+                "name",
+                "Casa"
+            )
+
+
+            away = (
+                event.get("awayTeam") or {}
+            ).get(
+                "name",
+                "Visitante"
+            )
+
+
+
+            home_score = (
+                event.get("homeScore") or {}
+            ).get(
+                "current",
+                0
+            )
+
+
+            away_score = (
+                event.get("awayScore") or {}
+            ).get(
+                "current",
+                0
+            )
+
+
+
+            minute = self.get_match_minute(event)
+
+
+
+            corners = self.provider.get_corners(
+                event_id
+            )
+
+
+
+            home_corners = corners.get(
+                "home_corners",
+                0
+            )
+
+
+            away_corners = corners.get(
+                "away_corners",
+                0
+            )
+
+
+            total_corners = corners.get(
+                "total_corners",
+                0
+            )
+
+
+
+            if minute > 0:
+
+                corner_rate = round(
+                    total_corners / minute,
+                    3
+                )
+
+            else:
+
+                corner_rate = 0
+
+
+
+            return {
+
+
+                "event_id": event_id,
+
+
+                "match": f"{home} x {away}",
+
+
+                "home_score": home_score,
+
+
+                "away_score": away_score,
+
+
+                "score": f"{home_score} - {away_score}",
+
+
+                "minute": minute,
+
+
+                "corners": {
+
+
+                    "home_corners": home_corners,
+
+
+                    "away_corners": away_corners,
+
+
+                    "total_corners": total_corners
+
+
+                },
+
+
+                "corner_rate": corner_rate
+
+
+            }
+
+
+
+        except Exception as e:
+
+
+            print(
+                f"Erro no LiveAnalyzer: {e}"
+            )
+
+
             return None
-
-
-        home_corners = corners.get("home_corners", 0)
-        away_corners = corners.get("away_corners", 0)
-
-        total_corners = home_corners + away_corners
-
-
-        # ritmo de cantos
-        corner_rate = 0
-
-        if minute and minute > 0:
-            corner_rate = round(total_corners / minute, 3)
-
-
-
-        analysis = {
-
-            "event_id": event_id,
-
-            "match": f"{home} x {away}",
-
-            "score": f"{home_score} - {away_score}",
-
-            "minute": minute,
-
-            "corners": {
-
-                "home_corners": home_corners,
-
-                "away_corners": away_corners,
-
-                "total_corners": total_corners
-
-            },
-
-            "corner_rate": corner_rate
-
-        }
-
-
-        return analysis
