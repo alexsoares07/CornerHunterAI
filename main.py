@@ -1,18 +1,16 @@
 import os
-import json
+import asyncio
 from pathlib import Path
-
 from dotenv import load_dotenv
 
 from telegram import Update
 from telegram.ext import (
     Application,
     CommandHandler,
-    ContextTypes,
+    ContextTypes
 )
 
 from analyzer.scanner import scan_matches
-from services.telegram_sender import TelegramSender
 
 
 # ==============================
@@ -23,280 +21,163 @@ BASE_DIR = Path(__file__).resolve().parent
 
 load_dotenv(BASE_DIR / ".env")
 
-
 TOKEN = os.getenv("BOT_TOKEN")
 
 
-print("TOKEN CARREGADO:", TOKEN)
+print("=" * 50)
+print("TOKEN CARREGADO COM SUCESSO")
+print("=" * 50)
 
 
-telegram_sender = TelegramSender()
+if not TOKEN:
+    raise Exception("TOKEN DO TELEGRAM NÃO ENCONTRADO")
+
+
+# ==============================
+# CONTROLE DE SINAIS
+# ==============================
+
+CHAT_ID = None
+
+ENVIADOS = set()
+
+
+SCORE_MINIMO = 50
 
 
 
 # ==============================
-# MEMÓRIA DOS SINAIS
+# START TELEGRAM
 # ==============================
 
-ARQUIVO_SINAIS = BASE_DIR / "sinais_enviados.json"
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
+    global CHAT_ID
 
+    CHAT_ID = update.effective_chat.id
 
-def carregar_sinais():
-
-    if ARQUIVO_SINAIS.exists():
-
-        with open(
-            ARQUIVO_SINAIS,
-            "r",
-            encoding="utf-8"
-        ) as arquivo:
-
-            return set(json.load(arquivo))
-
-    return set()
-
-
-
-def salvar_sinais():
-
-    with open(
-        ARQUIVO_SINAIS,
-        "w",
-        encoding="utf-8"
-    ) as arquivo:
-
-        json.dump(
-            list(sinais_enviados),
-            arquivo,
-            indent=4
-        )
-
-
-
-sinais_enviados = carregar_sinais()
-
-
-
-# ==============================
-# MONITOR AUTOMÁTICO
-# ==============================
-
-async def monitorar(context: ContextTypes.DEFAULT_TYPE):
-
-    print("\n==============================")
-    print("MONITORANDO JOGOS...")
-    print("==============================")
-
-
-    jogos = scan_matches()
-
-
-    print(
-        f"Jogos analisados: {len(jogos)}"
+    await update.message.reply_text(
+        "🤖 CornerHunter AI conectado!\n\n"
+        "📡 Monitor de escanteios ativado.\n"
+        f"🎯 Score mínimo: {SCORE_MINIMO}"
     )
 
-
-    for jogo in jogos:
-
-
-        signal = jogo.get("signal")
-
-
-        if signal is None:
-            continue
+    print("CHAT ID SALVO:", CHAT_ID)
 
 
 
-        event_id = signal.get(
-            "event_id"
-        )
+# ==============================
+# MONITOR
+# ==============================
+
+
+async def monitor():
+
+    global CHAT_ID
+
+
+    while True:
+
+        try:
+
+            print("\n")
+            print("=" * 30)
+            print("MONITORANDO JOGOS...")
+            print("=" * 30)
+
+
+            jogos = scan_matches()
+
+
+            print("Jogos analisados:", len(jogos))
+
+
+            for jogo in jogos:
+
+
+                score = jogo.get(
+                    "score",
+                    jogo.get("score_engine", {}).get("score",0)
+                )
+
+
+                nome = jogo.get(
+                    "jogo",
+                    jogo.get("match","")
+                )
+
+
+                minuto = jogo.get("minuto",0)
+
+                cantos = jogo.get(
+                    "escanteios",
+                    jogo.get("corners",{}).get("total_corners",0)
+                )
+
+
+                print("\nANALISE:")
+                print(jogo)
 
 
 
-        if event_id is None:
+                if score >= SCORE_MINIMO:
+
+
+                    chave = nome
+
+
+                    if chave not in ENVIADOS:
+
+
+                        mensagem = (
+                            "🔥 CORNERHUNTER AI - SINAL\n\n"
+                            f"⚽ Jogo: {nome}\n"
+                            f"⏱ Minuto: {minuto}'\n"
+                            f"🚩 Escanteios: {cantos}\n"
+                            f"📊 Score: {score}\n\n"
+                            "🎯 Entrada: Over Escanteios"
+                        )
+
+
+                        print("\nENVIANDO SINAL:")
+                        print(mensagem)
+
+
+
+                        if CHAT_ID:
+
+
+                            await app.bot.send_message(
+                                chat_id=CHAT_ID,
+                                text=mensagem
+                            )
+
+                            print("✅ SINAL ENVIADO TELEGRAM")
+
+
+                        else:
+
+                            print(
+                                "⚠️ CHAT_ID ainda não conectado"
+                            )
+
+
+                        ENVIADOS.add(chave)
+
+
+
+            print("\nAguardando 60 segundos...")
+
+
+        except Exception as e:
 
             print(
-                "⚠️ Sinal sem event_id ignorado"
-            )
-
-            continue
-
-
-
-        if event_id in sinais_enviados:
-
-            print(
-                f"⏭️ Sinal já enviado: {event_id}"
-            )
-
-            continue
-
-
-
-        print("\n🚨 NOVO SINAL")
-
-        print(signal)
-
-
-
-        telegram_sender.send(
-            signal
-        )
-
-
-
-        sinais_enviados.add(
-            event_id
-        )
-
-
-        salvar_sinais()
-
-
-
-
-# ==============================
-# COMANDO START
-# ==============================
-
-async def start(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-
-    mensagem = """
-🤖 CornerHunter AI ONLINE
-
-Sistema Over Escanteios ativado.
-
-✅ Telegram conectado
-✅ Scanner automático ligado
-✅ Monitorando jogos ao vivo
-"""
-
-
-    await update.message.reply_text(
-        mensagem
-    )
-
-
-
-
-# ==============================
-# COMANDO JOGOS
-# ==============================
-
-async def jogos(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-
-    partidas = scan_matches()
-
-
-    if not partidas:
-
-        await update.message.reply_text(
-            "Nenhum jogo encontrado."
-        )
-
-        return
-
-
-
-    mensagem = "📊 JOGOS AO VIVO\n\n"
-
-
-
-    for jogo in partidas:
-
-
-        engine = jogo.get(
-            "score_engine",
-            {}
-        )
-
-
-        mensagem += (
-            f"⚽ {jogo.get('match')}\n"
-            f"⏱ {jogo.get('minute')}'\n"
-            f"🚩 Escanteios: "
-            f"{jogo.get('corners',{}).get('total_corners',0)}\n"
-            f"🔥 Score: {engine.get('score',0)}\n\n"
-        )
-
-
-    await update.message.reply_text(
-        mensagem
-    )
-
-
-
-
-# ==============================
-# COMANDO ANALISAR
-# ==============================
-
-async def analisar(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-
-    partidas = scan_matches()
-
-
-    oportunidades = []
-
-
-    for jogo in partidas:
-
-
-        signal = jogo.get(
-            "signal"
-        )
-
-
-        if signal:
-
-            oportunidades.append(
-                signal
+                "ERRO MONITOR:",
+                e
             )
 
 
-
-    if not oportunidades:
-
-        await update.message.reply_text(
-            "📊 Nenhuma oportunidade encontrada."
-        )
-
-        return
-
-
-
-    mensagem = (
-        "🚨 OPORTUNIDADES\n\n"
-    )
-
-
-    for signal in oportunidades:
-
-
-        mensagem += (
-            f"⚽ {signal['match']}\n"
-            f"⏱ {signal['minute']}'\n"
-            f"🚩 Cantos: "
-            f"{signal['corners']['total_corners']}\n"
-            f"🔥 Confiança: "
-            f"{signal['confidence']}\n\n"
-        )
-
-
-    await update.message.reply_text(
-        mensagem
-    )
-
+        await asyncio.sleep(60)
 
 
 
@@ -304,13 +185,19 @@ async def analisar(
 # INICIAR BOT
 # ==============================
 
-def iniciar_bot():
+
+async def iniciar():
+
+    global app
 
 
     app = (
         Application
         .builder()
         .token(TOKEN)
+        .connect_timeout(60)
+        .read_timeout(60)
+        .write_timeout(60)
         .build()
     )
 
@@ -323,41 +210,27 @@ def iniciar_bot():
     )
 
 
-    app.add_handler(
-        CommandHandler(
-            "jogos",
-            jogos
-        )
-    )
-
-
-    app.add_handler(
-        CommandHandler(
-            "analisar",
-            analisar
-        )
-    )
-
-
-
-    app.job_queue.run_repeating(
-        monitorar,
-        interval=60,
-        first=5
-    )
-
-
-
     print("=" * 50)
-    print("🤖 Bot Telegram iniciado!")
+    print("🤖 CornerHunter AI iniciado!")
     print("📡 Monitor automático ligado.")
-    print("⏳ Verificando jogos a cada 60 segundos...")
+    print("⏳ Scanner a cada 60 segundos.")
     print("=" * 50)
 
 
 
-    app.run_polling()
+    await app.initialize()
 
+    await app.start()
+
+    await app.updater.start_polling()
+
+
+    asyncio.create_task(
+        monitor()
+    )
+
+
+    await asyncio.Event().wait()
 
 
 
@@ -365,6 +238,9 @@ def iniciar_bot():
 # EXECUÇÃO
 # ==============================
 
+
 if __name__ == "__main__":
 
-    iniciar_bot()
+    asyncio.run(
+        iniciar()
+    )
